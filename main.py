@@ -86,23 +86,24 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
     faiss_index_path = os.path.join(BASE_DIR, f"{agent_id}_index.faiss")
     chunks_path = os.path.join(BASE_DIR, f"chunks_{agent_id}.json")
 
+    # Check if FAISS index and document chunks exist
     if not os.path.exists(faiss_index_path) or not os.path.exists(chunks_path):
         raise HTTPException(status_code=404, detail="FAISS index or document chunks not found for agent")
 
+    # Load FAISS index and document chunks
     faiss_index = faiss.read_index(faiss_index_path)
     with open(chunks_path, "r") as f:
         document_chunks = json.load(f)
 
+    # Initialize conversation context
     if not conversation_id:
         conversation_id = str(uuid.uuid4())
         conversation_contexts[conversation_id] = []
 
     context_history = conversation_contexts.get(conversation_id, [])
-    if context_history:
-        past_conversation = "\n".join([f"Q: {c['query']} A: {c['response']}" for c in context_history])
-    else:
-        past_conversation = ""
+    past_conversation = "\n".join([f"Q: {c['query']} A: {c['response']}" for c in context_history]) if context_history else ""
 
+    # Encode the query and search for relevant context
     query_embedding = embedding_model.encode([query])
     k = 3
     distances, indices = faiss_index.search(query_embedding, k)
@@ -110,19 +111,28 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
     retrieved_context = [document_chunks[index] for index in indices[0] if index != -1]
 
     if not retrieved_context:
-        response_text = "No relevant information found in the uploaded documents."
-        answer = response_text
+        answer = "No relevant information found in the uploaded documents."
     else:
         context_for_llm = "\n".join(retrieved_context)
         input_text = f"{past_conversation}\nContext: {context_for_llm}\n\nQuery: {query}\n\nAnswer:"
-        inputs = llama_tokenizer.encode(input_text, return_tensors="pt")
 
-        max_input_length = 400
-        if inputs.size(1) > max_input_length:
-            inputs = inputs[:, -max_input_length:]
+        # Ensure tokenizer has a pad token
+        if llama_tokenizer.pad_token_id is None:
+            llama_tokenizer.pad_token = llama_tokenizer.eos_token
 
+        # Tokenize the input with attention mask
+        inputs = llama_tokenizer.encode_plus(
+            input_text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=400
+        )
+
+        # Generate the response using the model
         outputs = llama_model.generate(
-            inputs,
+            inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
             max_new_tokens=100,
             num_return_sequences=1,
             do_sample=True
@@ -130,6 +140,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         response_text = llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
         answer = response_text.split("Answer:")[-1].strip()
 
+    # Update the conversation context
     context_history.append({"query": query, "response": answer})
     conversation_contexts[conversation_id] = context_history
 
