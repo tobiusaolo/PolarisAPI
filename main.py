@@ -1,6 +1,6 @@
 from fastapi import FastAPI,UploadFile, File,HTTPException,Form
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pyngrok import ngrok
 import os
 import faiss
 from tempfile import NamedTemporaryFile
@@ -124,4 +124,15 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         "context_history": context_history
     }
 
-# app.run()
+def run_with_ngrok():
+    # Start NGROK tunnel
+    public_url = ngrok.connect(8000).public_url
+    print(f"NGROK public URL: {public_url}")
+    print("Access your FastAPI app at this URL.")
+
+    # Run the Uvicorn server
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    run_with_ngrok()
