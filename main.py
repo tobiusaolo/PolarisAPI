@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pyngrok import ngrok
 import os
 import faiss
-from tempfile import NamedTemporaryFile
 from typing import List, Optional, Dict
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -29,7 +28,7 @@ BASE_DIR = "./faiss_indices"
 os.makedirs(BASE_DIR, exist_ok=True)
 
 huggingface_token = "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"
-llama_model_name = "NousResearch/Llama-2-7b-hf"
+llama_model_name = "meta-llama/Llama-3.2-1B"
 llama_tokenizer = AutoTokenizer.from_pretrained(llama_model_name, use_auth_token=huggingface_token)
 llama_model = AutoModelForCausalLM.from_pretrained(llama_model_name, use_auth_token=huggingface_token)
 conversation_contexts: Dict[str, List[Dict[str, str]]] = {}
