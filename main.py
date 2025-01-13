@@ -108,7 +108,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         context_for_llm = "\n".join(retrieved_context)
         input_text = f"Context: {context_for_llm}\n\nQuery: {query}\n\nAnswer:"
         inputs = llama_tokenizer.encode(input_text, return_tensors="pt")
-        outputs = llama_model.generate(inputs, max_length=500, num_return_sequences=1, do_sample=True)
+        outputs = llama_model.generate(inputs, max_new_tokens=100, num_return_sequences=1, do_sample=True)
         response_text = llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     context_history.append({"query": query, "response": response_text})

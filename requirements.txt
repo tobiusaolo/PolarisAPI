@@ -11,3 +11,4 @@ sentence_transformers==3.0.1
 transformers==4.44.0
 PyMuPDF
 pyngrok
+python-multipart
