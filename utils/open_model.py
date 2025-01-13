@@ -9,7 +9,7 @@ openai.api_version = "2023-03-15-preview"
 openai.api_key = "af7a5446c36847f09fad6578420d026a"
 
 
-def get_openai_response(prompt, deployment_name, temperature=0.5, max_tokens=30):
+def get_openai_response(prompt, deployment_name, temperature=0.5, max_tokens=512):
  
 
   response = openai.chat.completions.create(
