@@ -122,7 +122,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
 
     # Initialize the text-generation pipeline
     model_id = "meta-llama/Meta-Llama-3-8B"
-    pipeline = transformers.pipeline("text-generation", model=model_id, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto")
+    pipeline = transformers.pipeline("text-generation", model=model_id, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto",token=huggingface_token )
 
     # Generate the response
     response = pipeline(input_text, max_length=400, num_return_sequences=1, do_sample=True)
