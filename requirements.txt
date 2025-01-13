@@ -12,4 +12,4 @@ PyMuPDF
 pyngrok
 python-multipart
 accelerate
-torch
+openai

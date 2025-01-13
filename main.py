@@ -6,7 +6,7 @@ import faiss
 from typing import List, Optional, Dict
 from sentence_transformers import SentenceTransformer
 import transformers
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from utils.open_model import process_files_and_create_json
 import uuid
 from utils.document_processing import parse_document
 import json
@@ -30,10 +30,6 @@ embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 BASE_DIR = "./faiss_indices"
 os.makedirs(BASE_DIR, exist_ok=True)
 
-huggingface_token = "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"
-llama_model_name = "meta-llama/Llama-3.2-1B"
-llama_tokenizer = AutoTokenizer.from_pretrained(llama_model_name, use_auth_token=huggingface_token)
-llama_model = AutoModelForCausalLM.from_pretrained(llama_model_name, use_auth_token=huggingface_token)
 conversation_contexts: Dict[str, List[Dict[str, str]]] = {}
 
 
@@ -120,13 +116,10 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
     context_for_llm = "\n".join([chunk.strip() for chunk in retrieved_context[:k]])
     input_text = f"{past_conversation}\nContext:\n{context_for_llm}\n\nQuery: {query}\n\nAnswer:"
 
-    # Initialize the text-generation pipeline
-    model_id = "meta-llama/Meta-Llama-3-8B"
-    pipeline = transformers.pipeline("text-generation", model=model_id, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto",token=huggingface_token )
-
+  
     # Generate the response
-    response = pipeline(input_text, max_length=400, num_return_sequences=1, do_sample=True)
-    answer = response[0]['generated_text'].split("Answer:")[-1].strip()
+    answer =process_files_and_create_json(input_text)
+   
 
     # Update the conversation context
     context_history.append({"query": query, "response": answer})
