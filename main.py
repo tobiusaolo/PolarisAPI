@@ -105,7 +105,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         past_conversation = ""
 
     query_embedding = embedding_model.encode([query])
-    k = 5
+    k = 3
     distances, indices = faiss_index.search(query_embedding, k)
 
     retrieved_context = [document_chunks[index] for index in indices[0] if index != -1]
