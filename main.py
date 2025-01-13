@@ -10,6 +10,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import uuid
 from utils.document_processing import parse_document
 import json
+import torch
 
 
 app = FastAPI()
