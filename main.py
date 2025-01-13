@@ -6,8 +6,7 @@ import faiss
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Dict
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
-import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import uuid
 from utils.document_processing import parse_document
 import json
@@ -21,11 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Check for GPU availability for Faiss
-if faiss.get_num_gpus() > 0:
-    res = faiss.StandardGpuResources()
-else:
-    res = None
+# Check if a GPU is available
+USE_GPU = faiss.get_num_gpus() > 0
 
 embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
@@ -47,11 +43,13 @@ async def upload_files(user_id: str = Form(...), files: List[UploadFile] = File(
     dimension = embedding_model.get_sentence_embedding_dimension()
     if os.path.exists(faiss_index_path):
         faiss_index = faiss.read_index(faiss_index_path)
+    else:
+        faiss_index = faiss.IndexFlatL2(dimension)
+
+    document_chunks = []
+    if os.path.exists(chunks_path):
         with open(chunks_path, "r") as f:
             document_chunks = json.load(f)
-    else:
-        faiss_index = faiss.IndexFlatL2(dimension) if not res else faiss.index_cpu_to_gpu(res, 0, faiss.IndexFlatL2(dimension))
-        document_chunks = []
 
     processed_files = []
     failed_files = []
@@ -92,7 +90,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
     if not os.path.exists(faiss_index_path) or not os.path.exists(chunks_path):
         raise HTTPException(status_code=404, detail="FAISS index or document chunks not found for agent")
 
-    faiss_index = faiss.read_index(faiss_index_path) if not res else faiss.index_cpu_to_gpu(res, 0, faiss.read_index(faiss_index_path))
+    faiss_index = faiss.read_index(faiss_index_path)
     with open(chunks_path, "r") as f:
         document_chunks = json.load(f)
 
@@ -101,7 +99,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         conversation_contexts[conversation_id] = []
 
     context_history = conversation_contexts.get(conversation_id, [])
-    if context_history and conversation_id in conversation_contexts:
+    if context_history:
         past_conversation = "\n".join([f"Q: {c['query']} A: {c['response']}" for c in context_history])
     else:
         past_conversation = ""
