@@ -138,6 +138,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
             do_sample=True
         )
         response_text = llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print(response_text)
         answer = response_text.split("Answer:")[-1].strip()
 
     # Update the conversation context
