@@ -5,10 +5,12 @@ import os
 import faiss
 from typing import List, Optional, Dict
 from sentence_transformers import SentenceTransformer
+import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import uuid
 from utils.document_processing import parse_document
 import json
+
 
 app = FastAPI()
 app.add_middleware(
@@ -107,49 +109,25 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
     distances, indices = faiss_index.search(query_embedding, k)
     retrieved_context = [document_chunks[index] for index in indices[0] if index != -1]
 
-    # Ensure context is not empty
     if not retrieved_context:
         return {
             "conversation_id": conversation_id,
             "answer": "No relevant information found in the uploaded documents."
         }
 
-    # Clean and structure the context
+    # Prepare context for the pipeline
     context_for_llm = "\n".join([chunk.strip() for chunk in retrieved_context[:k]])
     input_text = f"{past_conversation}\nContext:\n{context_for_llm}\n\nQuery: {query}\n\nAnswer:"
 
-    # Ensure tokenizer has a pad token
-    if llama_tokenizer.pad_token_id is None:
-        llama_tokenizer.pad_token = llama_tokenizer.eos_token
+    # Initialize the text-generation pipeline
+    model_id = "meta-llama/Meta-Llama-3-8B"
+    pipeline = transformers.pipeline("text-generation", model=model_id, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto")
 
-    # Tokenize input with attention mask
-    inputs = llama_tokenizer.encode_plus(
-        input_text,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=400
-    )
+    # Generate the response
+    response = pipeline(input_text, max_length=400, num_return_sequences=1, do_sample=True)
+    answer = response[0]['generated_text'].split("Answer:")[-1].strip()
 
-    # Generate response
-    outputs = llama_model.generate(
-        inputs['input_ids'],
-        attention_mask=inputs['attention_mask'],
-        max_new_tokens=100,
-        num_return_sequences=1,
-        do_sample=True
-    )
-
-    response_text = llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
-    print("Raw Model Output:", response_text)
-
-    # Extract and clean answer
-    if "Answer:" in response_text:
-        answer = response_text.split("Answer:")[-1].strip()
-    else:
-        answer = response_text.strip()
-
-    # Update conversation context
+    # Update the conversation context
     context_history.append({"query": query, "response": answer})
     conversation_contexts[conversation_id] = context_history
 
@@ -157,6 +135,7 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         "conversation_id": conversation_id,
         "answer": answer
     }
+
 
 
 def run_with_ngrok():
