@@ -1,6 +1,6 @@
 faiss_cpu==1.8.0.post1
 fastapi==0.115.6
-fitz==0.0.1.dev2
+fitz
 pandas==2.2.3
 pdfplumber==0.11.5
 Pillow

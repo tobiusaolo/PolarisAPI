@@ -11,7 +11,7 @@ import uuid
 from utils.document_processing import parse_document
 import json
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from flask_ngrok import run_with_ngrok
+# from flask_ngrok import run_with_ngrok
 
 
 app = FastAPI()
@@ -22,7 +22,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-run_with_ngrok(app)
+# run_with_ngrok(app)
 
 embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 # Base directory to store FAISS indices
@@ -124,4 +124,4 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
         "context_history": context_history
     }
 
-app.run()
+# app.run()
