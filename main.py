@@ -104,26 +104,34 @@ async def start_conversation(agent_id: str, query: str = Form(...), conversation
 
     if not retrieved_context:
         response_text = "No relevant information found in the uploaded documents."
+        answer = response_text
     else:
         context_for_llm = "\n".join(retrieved_context)
         input_text = f"Context: {context_for_llm}\n\nQuery: {query}\n\nAnswer:"
         inputs = llama_tokenizer.encode(input_text, return_tensors="pt")
-        outputs = llama_model.generate(inputs, max_new_tokens=100, num_return_sequences=1, do_sample=True)
+
+        # Handle long inputs
+        max_input_length = 400
+        if inputs.size(1) > max_input_length:
+            inputs = inputs[:, -max_input_length:]
+
+        outputs = llama_model.generate(
+            inputs,
+            max_new_tokens=100,  # Generate up to 100 tokens
+            num_return_sequences=1,
+            do_sample=True
+        )
         response_text = llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
+        answer = response_text.split("Answer:")[-1].strip()  # Extract answer only
 
-    context_history.append({"query": query, "response": response_text})
+    # Add query and answer to conversation history
+    context_history.append({"query": query, "response": answer})
     conversation_contexts[conversation_id] = context_history
-
-    summary = response_text[:100]
 
     return {
         "conversation_id": conversation_id,
-        "summary": summary,
-        "response": response_text,
-        "references": retrieved_context,
-        "context_history": context_history
+        "answer": answer
     }
-
 def run_with_ngrok():
     # Start NGROK tunnel
     public_url = ngrok.connect(8000).public_url
